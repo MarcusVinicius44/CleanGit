@@ -16,14 +16,7 @@ export default function Popup() {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: '#1f6feb',
-          }}
-        />
+        <img src="/icons/icon48.png" alt="Clean Git" style={{ width: 32, height: 32, borderRadius: 8 }} />
         <div>
           <div style={{ fontWeight: 600, fontSize: 16 }}>Clean Git</div>
           <div style={{ fontSize: 11, color: '#666' }}>Bulk Repository Manager</div>

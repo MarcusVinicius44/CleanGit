@@ -6,8 +6,18 @@ export default defineManifest({
   name: 'Clean Git - Bulk Repository Manager',
   description: 'Gerencie e limpe seus repositorios do GitHub em massa, direto do navegador.',
   version: pkg.version,
+  icons: {
+    16: 'icons/icon16.png',
+    48: 'icons/icon48.png',
+    128: 'icons/icon128.png',
+  },
   action: {
     default_popup: 'src/popup/index.html',
+    default_icon: {
+      16: 'icons/icon16.png',
+      48: 'icons/icon48.png',
+      128: 'icons/icon128.png',
+    },
   },
   background: {
     service_worker: 'src/background/service-worker.js',
