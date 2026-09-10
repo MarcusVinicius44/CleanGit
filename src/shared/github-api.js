@@ -22,7 +22,10 @@ export function getAuthenticatedUser(token) {
 }
 
 export function listRepositories(token, page = 1) {
-  return githubRequest(token, `/user/repos?per_page=100&page=${page}&sort=updated`)
+  return githubRequest(
+    token,
+    `/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner`,
+  )
 }
 
 export function deleteRepository(token, owner, repo) {
