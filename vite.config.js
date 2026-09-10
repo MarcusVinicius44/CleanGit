@@ -5,4 +5,12 @@ import manifest from './manifest.config.js'
 
 export default defineConfig({
   plugins: [react(), crx({ manifest })],
+  build: {
+    rollupOptions: {
+      input: {
+        connect: 'src/connect/index.html',
+        dashboard: 'src/dashboard/index.html',
+      },
+    },
+  },
 })
