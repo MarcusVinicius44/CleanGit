@@ -4,7 +4,7 @@ import pkg from './package.json' with { type: 'json' }
 export default defineManifest({
   manifest_version: 3,
   name: 'Clean Git - Bulk Repository Manager',
-  description: 'Gerencie e limpe seus repositorios do GitHub em massa, direto do navegador.',
+  description: 'Manage and clean up your GitHub repositories in bulk, right from your browser.',
   version: pkg.version,
   icons: {
     16: 'icons/icon16.png',
@@ -25,10 +25,8 @@ export default defineManifest({
   },
   permissions: ['storage'],
   host_permissions: ['https://api.github.com/*'],
-  web_accessible_resources: [
-    {
-      resources: ['src/dashboard/index.html', 'src/connect/index.html'],
-      matches: ['<all_urls>'],
-    },
-  ],
+  content_security_policy: {
+    extension_pages:
+      "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://api.github.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self';",
+  },
 })

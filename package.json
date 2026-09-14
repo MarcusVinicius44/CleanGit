@@ -1,7 +1,7 @@
 {
   "name": "cleangit",
   "version": "0.1.0",
-  "description": "Extensao Chrome para gerenciar e limpar repositorios do GitHub em massa",
+  "description": "Chrome extension to manage and clean up GitHub repositories in bulk",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
