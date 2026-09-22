@@ -1,17 +1,36 @@
 const API_BASE = 'https://api.github.com'
 
+export class GitHubApiError extends Error {
+  constructor(message, status, rateLimited = false) {
+    super(message)
+    this.name = 'GitHubApiError'
+    this.status = status
+    this.rateLimited = rateLimited
+  }
+}
+
 async function githubRequest(token, path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      ...options.headers,
-    },
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        ...options.headers,
+      },
+    })
+  } catch (err) {
+    throw new GitHubApiError('Network error while reaching GitHub.', 0)
+  }
 
   if (!response.ok) {
-    throw new Error(`GitHub API error (${response.status}): ${response.statusText}`)
+    const rateLimited = response.status === 403 && response.headers.get('X-RateLimit-Remaining') === '0'
+    throw new GitHubApiError(
+      `GitHub API error (${response.status}): ${response.statusText}`,
+      response.status,
+      rateLimited,
+    )
   }
 
   return response.status === 204 ? null : response.json()
@@ -28,13 +47,14 @@ export function listRepositories(token, page = 1) {
   )
 }
 
-export async function listAllRepositories(token) {
+export async function listAllRepositories(token, onProgress) {
   const repos = []
   let page = 1
 
   while (true) {
     const pageRepos = await listRepositories(token, page)
     repos.push(...pageRepos)
+    onProgress?.(repos.length)
     if (pageRepos.length < 100) break
     page += 1
   }
