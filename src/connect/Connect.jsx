@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { setToken } from '../shared/storage.js'
-import { getAuthenticatedUser } from '../shared/github-api.js'
+import { getAuthenticatedUser, GitHubApiError } from '../shared/github-api.js'
 import { colors, fontFamily, monoFontFamily, radii } from '../shared/theme.js'
 
 export default function Connect() {
@@ -19,7 +19,13 @@ export default function Connect() {
       window.location.href = chrome.runtime.getURL('src/dashboard/index.html')
     } catch (err) {
       setStatus('error')
-      setError('Invalid token or missing required permissions.')
+      if (err instanceof GitHubApiError && err.status === 401) {
+        setError('Invalid token. Check that you pasted it correctly.')
+      } else if (err instanceof GitHubApiError && err.status === 0) {
+        setError('Could not reach GitHub. Check your internet connection and try again.')
+      } else {
+        setError('Could not connect. Make sure the token has the "repo" and "delete_repo" scopes.')
+      }
     }
   }
 
