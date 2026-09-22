@@ -25,7 +25,7 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [errorKind, setErrorKind] = useState('') // 'auth' | 'rateLimit' | 'network' | ''
   const [actionError, setActionError] = useState('')
-  const [pendingAction, setPendingAction] = useState(null) // 'delete' | 'private' | null
+  const [pendingAction, setPendingAction] = useState(null) // 'delete' | 'makePrivate' | 'makePublic' | null
   const [confirmText, setConfirmText] = useState('')
 
   const [search, setSearch] = useState('')
@@ -138,6 +138,8 @@ export default function Dashboard() {
   }, [repos])
 
   const selectedRepos = repos.filter((repo) => selected.has(repo.full_name))
+  const makePrivateTargets = selectedRepos.filter((repo) => !repo.private)
+  const makePublicTargets = selectedRepos.filter((repo) => repo.private)
   const donutSource = selectedRepos.length > 0 ? selectedRepos : repos
 
   const languageDistribution = useMemo(() => {
@@ -216,8 +218,7 @@ export default function Dashboard() {
   async function handleConfirmMakePrivate() {
     setActionError('')
     try {
-      const targets = selectedRepos.filter((repo) => !repo.private)
-      for (const repo of targets) {
+      for (const repo of makePrivateTargets) {
         await setRepositoryPrivate(token, repo.owner.login, repo.name, true)
       }
       setSelected(new Set())
@@ -225,6 +226,21 @@ export default function Dashboard() {
       loadRepos(token)
     } catch (err) {
       setActionError(describeActionError(err, 'Failed to make one or more repositories private.'))
+    }
+  }
+
+  async function handleConfirmMakePublic() {
+    setActionError('')
+    try {
+      for (const repo of makePublicTargets) {
+        await setRepositoryPrivate(token, repo.owner.login, repo.name, false)
+      }
+      setSelected(new Set())
+      setPendingAction(null)
+      setConfirmText('')
+      loadRepos(token)
+    } catch (err) {
+      setActionError(describeActionError(err, 'Failed to make one or more repositories public.'))
     }
   }
 
@@ -498,11 +514,18 @@ export default function Dashboard() {
                     Download
                   </button>
                   <button
-                    disabled={selectedRepos.length === 0}
-                    onClick={() => openPendingAction('private')}
-                    style={ghostButtonStyle(selectedRepos.length === 0)}
+                    disabled={makePrivateTargets.length === 0}
+                    onClick={() => openPendingAction('makePrivate')}
+                    style={ghostButtonStyle(makePrivateTargets.length === 0)}
                   >
-                    Make private
+                    Make private{makePrivateTargets.length > 0 ? ` (${makePrivateTargets.length})` : ''}
+                  </button>
+                  <button
+                    disabled={makePublicTargets.length === 0}
+                    onClick={() => openPendingAction('makePublic')}
+                    style={ghostButtonStyle(makePublicTargets.length === 0)}
+                  >
+                    Make public{makePublicTargets.length > 0 ? ` (${makePublicTargets.length})` : ''}
                   </button>
                   <button
                     disabled={selectedRepos.length === 0}
@@ -567,12 +590,12 @@ export default function Dashboard() {
           </ConfirmModal>
         )}
 
-        {pendingAction === 'private' && (
+        {pendingAction === 'makePrivate' && (
           <ConfirmModal
             title="Make repositories private"
             titleColor={colors.textPrimary}
             description="The following public repositories will be made private:"
-            repos={selectedRepos.filter((repo) => !repo.private)}
+            repos={makePrivateTargets}
             error={actionError}
             onCancel={() => setPendingAction(null)}
           >
@@ -582,6 +605,38 @@ export default function Dashboard() {
               </button>
               <button onClick={handleConfirmMakePrivate} style={solidButtonStyle(colors.accent, colors.accentText, false)}>
                 Confirm
+              </button>
+            </div>
+          </ConfirmModal>
+        )}
+
+        {pendingAction === 'makePublic' && (
+          <ConfirmModal
+            title="Make repositories public"
+            titleColor={colors.danger}
+            description="The following private repositories will become visible to anyone on the internet, including their full commit history:"
+            repos={makePublicTargets}
+            error={actionError}
+            onCancel={() => setPendingAction(null)}
+          >
+            <p style={{ fontSize: 12, color: colors.textSecondary }}>
+              Type <strong style={{ color: colors.textPrimary }}>PUBLIC</strong> to confirm:
+            </p>
+            <input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              style={{ ...inputStyle({}), width: '100%', height: 36, marginBottom: 16, fontFamily: monoFontFamily }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPendingAction(null)} style={ghostButtonStyle(false)}>
+                Cancel
+              </button>
+              <button
+                disabled={confirmText !== 'PUBLIC'}
+                onClick={handleConfirmMakePublic}
+                style={solidButtonStyle(colors.dangerSolid, '#fff', confirmText !== 'PUBLIC')}
+              >
+                Make public
               </button>
             </div>
           </ConfirmModal>
