@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getToken } from '../shared/storage.js'
-import { listAllRepositories, deleteRepository, setRepositoryPrivate } from '../shared/github-api.js'
+import { getToken, clearToken } from '../shared/storage.js'
+import { listAllRepositories, deleteRepository, setRepositoryPrivate, GitHubApiError } from '../shared/github-api.js'
 import { formatSize } from '../shared/format.js'
 import { colors, fontFamily, monoFontFamily, radii } from '../shared/theme.js'
 import SupportLinks from '../shared/SupportLinks.jsx'
@@ -21,7 +21,9 @@ export default function Dashboard() {
   const [repos, setRepos] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [loading, setLoading] = useState(true)
+  const [loadedCount, setLoadedCount] = useState(0)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState('') // 'auth' | 'rateLimit' | 'network' | ''
   const [actionError, setActionError] = useState('')
   const [pendingAction, setPendingAction] = useState(null) // 'delete' | 'private' | null
   const [confirmText, setConfirmText] = useState('')
@@ -35,7 +37,7 @@ export default function Dashboard() {
   useEffect(() => {
     getToken().then((storedToken) => {
       if (!storedToken) {
-        window.location.href = chrome.runtime.getURL('src/connect/index.html')
+        goToConnect()
         return
       }
       setToken(storedToken)
@@ -43,14 +45,37 @@ export default function Dashboard() {
     })
   }, [])
 
+  function goToConnect() {
+    window.location.href = chrome.runtime.getURL('src/connect/index.html')
+  }
+
+  async function handleDisconnect() {
+    await clearToken()
+    goToConnect()
+  }
+
   async function loadRepos(activeToken) {
     setLoading(true)
+    setLoadedCount(0)
     setError('')
+    setErrorKind('')
     try {
-      const data = await listAllRepositories(activeToken)
+      const data = await listAllRepositories(activeToken, setLoadedCount)
       setRepos(data)
     } catch (err) {
-      setError('Could not load repositories. Check your token.')
+      if (err instanceof GitHubApiError && err.status === 401) {
+        setErrorKind('auth')
+        setError('Your token is invalid or has expired. Please reconnect your account.')
+      } else if (err instanceof GitHubApiError && err.rateLimited) {
+        setErrorKind('rateLimit')
+        setError('GitHub API rate limit reached. Please wait a few minutes and try again.')
+      } else if (err instanceof GitHubApiError && err.status === 0) {
+        setErrorKind('network')
+        setError('Could not reach GitHub. Check your internet connection and try again.')
+      } else {
+        setErrorKind('')
+        setError('Could not load repositories. Check your token permissions and try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -163,6 +188,16 @@ export default function Dashboard() {
     setPendingAction(type)
   }
 
+  function describeActionError(err, fallback) {
+    if (err instanceof GitHubApiError && err.status === 401) {
+      return 'Your token is invalid or has expired. Please reconnect your account.'
+    }
+    if (err instanceof GitHubApiError && err.rateLimited) {
+      return 'GitHub API rate limit reached. Please wait a few minutes and try again.'
+    }
+    return fallback
+  }
+
   async function handleConfirmDelete() {
     setActionError('')
     try {
@@ -174,7 +209,7 @@ export default function Dashboard() {
       setConfirmText('')
       loadRepos(token)
     } catch (err) {
-      setActionError('Failed to delete one or more repositories.')
+      setActionError(describeActionError(err, 'Failed to delete one or more repositories.'))
     }
   }
 
@@ -189,7 +224,7 @@ export default function Dashboard() {
       setPendingAction(null)
       loadRepos(token)
     } catch (err) {
-      setActionError('Failed to make one or more repositories private.')
+      setActionError(describeActionError(err, 'Failed to make one or more repositories private.'))
     }
   }
 
@@ -214,12 +249,68 @@ export default function Dashboard() {
       }}
     >
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24, color: colors.textPrimary }}>
-          Clean Git Dashboard
-        </h1>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src="/icons/icon48.png" alt="" style={{ width: 28, height: 28, borderRadius: 6 }} />
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: colors.textPrimary }}>
+              Clean Git Dashboard
+            </h1>
+          </div>
 
-        {loading && <p style={{ color: colors.textSecondary }}>Loading repositories...</p>}
-        {error && <p style={{ color: colors.danger }}>{error}</p>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 12px',
+                borderRadius: radii.md,
+                background: colors.successBg,
+                border: `1px solid ${colors.successBorder}`,
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.success }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: colors.success }}>Token Active</span>
+            </div>
+            <button onClick={handleDisconnect} style={ghostButtonStyle(false)}>
+              Disconnect
+            </button>
+          </div>
+        </div>
+
+        {loading && (
+          <p style={{ color: colors.textSecondary }}>
+            Loading repositories{loadedCount > 0 ? ` (${loadedCount} found so far...)` : '...'}
+          </p>
+        )}
+        {error && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <p style={{ color: colors.danger, margin: 0 }}>{error}</p>
+            {errorKind === 'auth' ? (
+              <button onClick={handleDisconnect} style={ghostButtonStyle(false)}>
+                Reconnect
+              </button>
+            ) : (
+              <button onClick={() => loadRepos(token)} style={ghostButtonStyle(false)}>
+                Try again
+              </button>
+            )}
+          </div>
+        )}
 
         {!loading && !error && (
           <>
