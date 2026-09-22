@@ -404,6 +404,7 @@ export default function Dashboard() {
                           />
                         </th>
                         <th style={thStyle}>Name</th>
+                        <th style={thStyle}>Description</th>
                         <th style={thStyle}>Visibility</th>
                         <th style={thStyle}>Language</th>
                         <th style={thStyle}>Size</th>
@@ -421,6 +422,18 @@ export default function Dashboard() {
                             />
                           </td>
                           <td style={{ ...tdStyle, color: colors.textPrimary }}>{repo.full_name}</td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              maxWidth: 240,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={repo.description ?? ''}
+                          >
+                            {repo.description || '-'}
+                          </td>
                           <td style={tdStyle}>{repo.private ? 'Private' : 'Public'}</td>
                           <td style={tdStyle}>{repo.language ?? '-'}</td>
                           <td style={tdStyle}>{formatSize(repo.size)}</td>
@@ -429,7 +442,7 @@ export default function Dashboard() {
                       ))}
                       {pageRepos.length === 0 && (
                         <tr>
-                          <td colSpan={6} style={{ padding: '16px 12px', color: colors.textSecondary }}>
+                          <td colSpan={7} style={{ padding: '16px 12px', color: colors.textSecondary }}>
                             No repositories found with the current filters.
                           </td>
                         </tr>
