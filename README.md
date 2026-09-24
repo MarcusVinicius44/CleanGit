@@ -30,6 +30,7 @@ src/
     donationLinks.js             links de doação (GitHub Sponsors / Buy Me a Coffee)
     SupportLinks.jsx             componente que renderiza os links de doação
 public/icons/                    ícones da extensão (16/48/128px)
+tests/                           testes automatizados (Vitest + Testing Library)
 manifest.config.js               manifesto do Chrome (Manifest V3), gerado via @crxjs/vite-plugin
 vite.config.js                   configuração do build (multi-entrada: popup/connect/dashboard)
 ```
@@ -48,7 +49,20 @@ Pré-requisito: Node.js instalado.
 npm install       # instala as dependências
 npm run dev       # sobe o Vite em modo desenvolvimento (hot reload)
 npm run build     # gera a build de produção em dist/
+npm test          # roda os testes automatizados uma vez
+npm run test:watch  # roda os testes de novo a cada arquivo salvo
 ```
+
+## Testes automatizados
+
+Os testes ficam em `tests/` e rodam com **Vitest** num navegador simulado (jsdom). Nenhum teste fala com o GitHub.com de verdade: o `fetch` e as APIs `chrome.*` são substituídos por versões falsas em memória (`tests/setup.js` e `tests/helpers.js`).
+
+O que é coberto:
+
+- `shared/` — formatação de tamanho, leitura/gravação do token, chamadas à API (headers, paginação, erros 401/403/rede, rate limit).
+- **Popup** — abre Connect ou Dashboard conforme exista token salvo.
+- **Connect** — valida o token antes de salvar e mostra a mensagem de erro certa.
+- **Dashboard** — carregamento e erros, busca/filtros/ordenação, e as travas de segurança das ações em massa (digitar `DELETE`/`PUBLIC`, só alterar os repositórios certos).
 
 ## Carregando a extensão no Chrome (modo desenvolvedor)
 
@@ -75,6 +89,6 @@ O token é validado contra a API antes de ser salvo e pode ser gerado diretament
 
 ## Status do projeto
 
-Funcional: conexão via PAT, listagem/filtro/ordenação/paginação de repositórios, download, tornar público/privado com confirmação, exclusão em massa com confirmação reforçada (digitar `DELETE`), desconectar conta.
+Funcional: conexão via PAT, listagem/filtro/ordenação/paginação de repositórios, download, tornar público/privado com confirmação, exclusão em massa com confirmação reforçada (digitar `DELETE`), desconectar conta. Testes automatizados cobrindo os módulos compartilhados e as três telas.
 
-Pendente: publicação na Chrome Web Store, testes automatizados, chave Pix configurada, link do Buy Me a Coffee configurado.
+Pendente: publicação na Chrome Web Store, chave Pix configurada, link do Buy Me a Coffee configurado.
